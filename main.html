@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<meta charset="UTF-8" />
+
+<style>
+    body {
+        background-color: #eeeeee;
+    }
+</style>
+
+<body>
+    <style>
+        .stage {
+            margin: 20px 0px 0px 100px;
+            background-color: #ffffff;
+        }
+
+        .button_label,
+        .date_label {
+            font: 24px sans-serif;
+        }
+
+        .stay_label {
+            font: 18px sans-serif;
+        }
+
+        .staff_label {
+            font: 28px sans-serif;
+        }
+
+        .custom-select {
+            border: solid 1px #999999;
+            box-sizing: border-box;
+        }
+
+        svg text {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            pointer-events: none;
+        }
+
+        select {
+            font: 20px sans-serif;
+            border-radius: 5px;
+            width: 7em;
+            padding: 0.5em;
+            margin-left: 5em;
+            border: none;
+            box-shadow: none;
+            background: #fff;
+            text-align: -webkit-center;
+            -webkit-appearance: none;
+            outline: none;
+            cursor: pointer;
+        }
+
+        #loading {
+            width: 100%;
+            height: 100%;
+            transition: all 1s;
+            background-color: rgba(240, 248, 255, 0.6);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 9999;
+        }
+
+        .spinner {
+            width: 200px;
+            height: 200px;
+            margin: 300px auto;
+            background-color: #fff;
+            border-radius: 100%;
+            animation: sk-scaleout 1s infinite ease-in-out;
+        }
+
+        .loaded {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        @keyframes sk-scaleout {
+            0% {
+                transform: scale(0);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 0;
+            }
+        }
+
+        input[type="range"] {
+            margin: auto;
+            -webkit-appearance: none;
+            position: relative;
+            overflow: hidden;
+            height: 20px;
+            width: 800px;
+            cursor: pointer;
+            border-radius: 0;
+        }
+
+        ::-webkit-slider-runnable-track {
+            background: #eee;
+        }
+
+        ::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px;
+            height: 40px;
+            background: #fff;
+            box-shadow: -400px 0 0 400px dodgerblue;
+            border: 1px solid dodgerblue;
+        }
+    </style>
+
+    <script src="d3.js"></script>
+    <script src="https://d3js.org/d3-timer.v1.min.js"></script>
+    <script>
+        let ward = "test";
+
+        let div1 = document.createElement("div");
+        div1.id = "div1";
+
+        let selectDate = document.createElement("select");
+        selectDate.className = "custom-select";
+        selectDate.id = "date1";
+        selectDate.name = "date1";
+        for (let i = 15; i < 16; i++) {
+            let option_str = "2023-03-" + String(i).padStart(2, "0");
+            selectDate.add(new Option(option_str, option_str));
+        }
+        div1.appendChild(selectDate);
+        document.body.appendChild(div1);
+    </script>
+
+    <svg class="stage"></svg>
+    <div id="loading" class="loaded">
+        <div class="spinner"></div>
+    </div>
+
+    <script type="text/javascript">
+        startVisualize();
+
+        function startVisualize() {
+            const loading = document.getElementById("loading");
+            loading.classList.remove("loaded");
+
+            console.log("Loading data file...");
+
+            let loaded = 0;
+            function jsload(src, onload) {
+                const script = document.createElement("script");
+                script.type = "text/javascript";
+                script.defer = true; //非同期
+                script.charset = "utf-8";
+                script.addEventListener("load", onload, false);
+                script.addEventListener(
+                    "load",
+                    () => {
+                        loaded++;
+                    },
+                    false
+                );
+                script.src = src;
+                document.getElementsByTagName("head")[0].appendChild(script);
+                return script;
+            }
+
+            const selectDate = document.getElementById("date1");
+            const idx = selectDate.selectedIndex;
+            const selectDateValue = selectDate.options[idx].value;
+
+            const fileNames = {
+                file1: `./data/js/${ward}/${selectDateValue}_1.js`,
+                file2: `./data/js/${ward}/${selectDateValue}_2.js`,
+            };
+
+            let JS = [];
+            for (let i = 1; i < 3; i++) {
+                const fileName = fileNames[`file${i}`];
+                JS.push(
+                    jsload(fileName, function () {
+                        console.log(`Finished loading ${fileName}`);
+                    })
+                );
+            }
+
+            var tmr = setInterval(function () {
+                if (loaded >= JS.length) {
+                    console.log("Start");
+                    clearInterval(tmr);
+                    document.getElementById("loading").classList.add("loaded");
+
+                    let data = data1.concat(data2);
+                    const stateDictionary = {
+                        level: {
+                            active: {
+                                未取得: "rgb(255, 0, 0, 1)",
+                                レベルⅠ: "rgb(0, 0, 255, 1)",
+                                レベルⅡ: "rgb(0, 128, 0, 1)",
+                                レベルⅢ: "rgb(128, 0, 128, 1)",
+                                レベルⅣ: "rgb(0, 0, 0, 1)",
+                            },
+                            inactive: {
+                                未取得: "rgb(255, 0, 0, 0.3)",
+                                レベルⅠ: "rgb(0, 0, 255, 0.3)",
+                                レベルⅡ: "rgb(0, 128, 0, 0.3)",
+                                レベルⅢ: "rgb(128, 0, 128, 0.3)",
+                                レベルⅣ: "rgb(0, 0, 0, 0.3)",
+                            },
+                            flag: {
+                                未取得: true,
+                                レベルⅠ: true,
+                                レベルⅡ: true,
+                                レベルⅢ: true,
+                                レベルⅣ: true,
+                            },
+                        },
+                        work: {
+                            active: {
+                                "12時間": "rgb(250,128,114, 1)",
+                                日勤: "rgb(255, 140, 0, 1)",
+                                夜勤: "rgb(100,149,237, 1)",
+                            },
+                            inactive: {
+                                "12時間": "rgb(250,128,114, 0.3)",
+                                日勤: "rgb(255, 140, 0, 0.3)",
+                                夜勤: "rgb(100,149,237, 0.3)",
+                            },
+                            flag: {
+                                "12時間": true,
+                                日勤: true,
+                                夜勤: true,
+                            },
+                        },
+                    };
+
+                    function formatDate(date, format) {
+                        format = format.replace(/yyyy/g, date.getFullYear());
+                        format = format.replace(/MM/g, ("0" + (date.getMonth() + 1)).slice(-2));
+                        format = format.replace(/dd/g, ("0" + date.getDate()).slice(-2));
+                        format = format.replace(/HH/g, ("0" + date.getHours()).slice(-2));
+                        format = format.replace(/mm/g, ("0" + date.getMinutes()).slice(-2));
+                        format = format.replace(/ss/g, ("0" + date.getSeconds()).slice(-2));
+                        format = format.replace(/SSS/g, ("00" + date.getMilliseconds()).slice(-3));
+                        return format;
+                    }
+
+                    let dateDay = new Date(selectDateValue);
+                    let dateNight = new Date(selectDateValue);
+                    dateNight.setDate(dateNight.getDate() + 1);
+
+                    let dateIdxDict = {};
+                    let timeIdxDict = {};
+                    let datetimeIdxDict = {};
+                    let idx = 0;
+                    for (let h = 8; h < 34; h++) {
+                        let hour = h < 24 ? h : h - 24;
+                        for (let m = 0; m < 60; m++) {
+                            for (let s = 0; s < 60; s++) {
+                                let timeStr = `${String(hour).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(
+                                    s
+                                ).padStart(2, "0")}`;
+                                dateIdxDict[idx] =
+                                    h < 24 ? formatDate(dateDay, "yyyy-MM-dd") : formatDate(dateNight, "yyyy-MM-dd");
+                                timeIdxDict[idx] = timeStr;
+                                datetimeIdxDict[idx] = dateIdxDict[idx] + " " + timeStr;
+                                idx++;
+                            }
+                        }
+                    }
+
+                    let timeIdx = 0;
+                    const timeIdxLength = Object.keys(timeIdxDict).length;
+                    const timerDuration = 60 * 60 * 1000;
+
+                    const getFlaggedKeys = (dictionary) => {
+                        return Object.keys(dictionary).filter((key) => dictionary[key]);
+                    };
+                    let levelState = getFlaggedKeys(stateDictionary.level.flag);
+                    let workTimeState = getFlaggedKeys(stateDictionary.work.flag);
+
+                    const filterNurseData = () => {
+                        return data.filter((elem) => {
+                            return (
+                                (elem.date === dateIdxDict[timeIdx]) &
+                                (elem.time === timeIdxDict[timeIdx]) &
+                                (elem.rssi > -120) &
+                                workTimeState.includes(elem.work_time) &
+                                levelState.includes(elem.level)
+                            );
+                        });
+                    };
+
+                    let dataTimeIdx = filterNurseData();
+                    let deviceNum = dataTimeIdx.length;
+
+                    let timer = d3.timeout(() => {}, 1);
+                    const FPS = 10;
+                    let playLabel = "▶︎";
+                    let rewindLabel = "◀︎";
+                    let speedState = "stop";
+                    let playCount = 0;
+                    let rewindCount = 0;
+
+                    const DEVICE_LIST = [...new Set(data.map((elem) => elem["device"]))];
+                    const STATION_LIST = ["beacon56", "beacon57", "beacon58"];
+                    const COLLIDOR_LIST = Array.from({ length: 56 - 36 }, (_, i) => `beacon${i + 36}`);
+
+                    let posCount = 0;
+                    const CIRCLE_R = 20;
+                    const DEVICE_STATION_POS = DEVICE_LIST.reduce((prev, d) => {
+                        const COL_NUM = 4;
+                        let x_idx = posCount % COL_NUM;
+                        let y_idx = Math.floor(posCount / COL_NUM);
+                        posCount = posCount + 1;
+                        return {
+                            ...prev,
+                            [d]: [CIRCLE_R * 2.25 * x_idx, CIRCLE_R * -2.5 * y_idx],
+                        };
+                    }, {});
+
+                    // Constants
+                    const FP_PATH = "./data/fig/" + ward + ".jpg";
+                    const STAGE_DIMENSIONS = {
+                        width: 1250,
+                        height: 1000,
+                    };
+                    const IMG_DIMENSIONS = {
+                        width: 1180,
+                        height: 880,
+                    };
+                    const PANEL_X_POS = "10";
+                    const PANEL_HEIGHT = 120;
+                    const a_x = 1;
+                    const b_x = 0;
+                    const a_y = 1;
+                    const b_y = PANEL_HEIGHT;
+
+                    // Stage and panels setup
+                    let stage = d3
+                        .select(".stage")
+                        .attr("width", STAGE_DIMENSIONS.width)
+                        .attr("height", STAGE_DIMENSIONS.height);
+
+                    let bg = stage
+                        .append("image")
+                        .attr("xlink:href", FP_PATH)
+                        .attr("width", IMG_DIMENSIONS.width)
+                        .attr("y", PANEL_HEIGHT);
+
+                    const createPanel = (stage, xPosition = 0, yPosition = 70) => {
+                        return stage.append("g").attr("transform", `translate(${xPosition},${yPosition})`);
+                    };
+
+                    let speedPanel = createPanel(stage);
+                    let speedPanel2 = createPanel(stage);
+                    let speedPanel3 = createPanel(stage);
+                    let updatePanel = createPanel(stage, 10);
+                    let workTimePanel = createPanel(stage, PANEL_X_POS, 100);
+                    let levelPanel = createPanel(stage, PANEL_X_POS, 100);
+
+                    // Time bar setup
+                    let svgTimeBar = d3.select(".stage").append("svg");
+                    svgTimeBar
+                        .append("text")
+                        .attr("class", "date_label")
+                        .attr("x", 20)
+                        .attr("y", 40)
+                        .attr("fill", "black")
+                        .attr("text-anchor", "left")
+                        .text(`${dateIdxDict[timeIdx]} ${timeIdxDict[timeIdx]}`);
+
+                    let svgTimeBarFo = svgTimeBar
+                        .append("foreignObject")
+                        .attr("width", STAGE_DIMENSIONS.width - 300)
+                        .attr("height", 60)
+                        .attr("x", 300)
+                        .attr("y", 20)
+                        .append("xhtml:div");
+
+                    // Seek bar setup
+                    svgTimeBarFo
+                        .append("input")
+                        .attr("type", "range")
+                        .attr("id", "time_slider")
+                        .attr("value", "0")
+                        .attr("min", "0")
+                        .attr("max", "93600")
+                        .attr("step", "1")
+                        .attr("x", 200)
+                        .attr("y", 0);
+
+                    // Time slider setup
+                    const updateSliderText = () => {
+                        svgTimeBar.select("text").text(`${dateIdxDict[timeIdx]} ${timeIdxDict[timeIdx]}`);
+                    };
+                    let timeSlider = document.getElementById("time_slider");
+                    window.addEventListener("load", () => {
+                        timeIdx = Number(timeSlider.value);
+                        updateSliderText();
+                    });
+                    timeSlider.value = timeIdx;
+                    updateSliderText();
+
+                    timeSlider.addEventListener("input", () => {
+                        timeIdx = Number(timeSlider.value);
+                        updateSliderText();
+                        updateCircle();
+                    });
+
+                    // Mapping functions
+                    const map = (value, a, b, beacon, devicePos) => {
+                        return STATION_LIST.includes(beacon) ? value * a + b + devicePos : value * a + b;
+                    };
+                    const xMap = (x, device, beacon) => map(x, a_x, b_x, beacon, DEVICE_STATION_POS[device][0]);
+                    const yMap = (y, device, beacon) => map(y, a_y, b_y, beacon, DEVICE_STATION_POS[device][1]);
+
+                    const circleFill = (d) => stateDictionary.work.active[d["work_time"]];
+                    const circleStroke = (d) => stateDictionary.level.active[d["level"]];
+                    const circleX = (d) => xMap(d["x"], d["device"], d["beacon"]);
+                    const circleY = (d) => yMap(d["y"], d["device"], d["beacon"]);
+                    const textX = (d) => xMap(d["x"], d["device"], d["beacon"]);
+                    const textY = (d) => yMap(d["y"], d["device"], d["beacon"]) + 10;
+
+                    let svg = d3.select(".stage").append("svg");
+                    svg.selectAll("circle")
+                        .data(dataTimeIdx)
+                        .enter()
+                        .append("circle")
+                        .style("fill", circleFill)
+                        .style("stroke", circleStroke)
+                        .style("stroke-width", 5)
+                        .attr("r", CIRCLE_R)
+                        .attr("cx", circleX)
+                        .attr("cy", circleY);
+
+                    svg.selectAll("text")
+                        .data(dataTimeIdx)
+                        .enter()
+                        .append("text")
+                        .text((d) => d["device"].substr(6))
+                        .attr("class", "staff_label")
+                        .attr("fill", "white")
+                        .attr("text-anchor", "middle")
+                        .attr("x", textX)
+                        .attr("y", textY);
+
+                    const BG_STAY_TIME = "rgb(255, 255, 255, 1)";
+                    const BG_STAY_TIME_CLEAR = "rgb(255, 255, 255, 0)";
+                    const BG_TEXT_STAY_TIME = "rgb(0, 0, 0, 1)";
+                    const BG_TEXT_STAY_TIME_CLEAR = "rgb(0, 0, 0, 0)";
+                    const WIDTH_STAY_TIME = 50;
+                    const HEIGHT_STAY_TIME = 25;
+                    const rectFill = (d) => stayTimeBg(d["stay_time"], d["beacon"]);
+                    const rectX = (d) => xMap(d["x"], d["device"], d["beacon"]) - WIDTH_STAY_TIME / 2;
+                    const rectY = (d) => yMap(d["y"], d["device"], d["beacon"]) - CIRCLE_R * 2;
+                    const textFill = (d) => stayTimeText(d["stay_time"], d["beacon"]);
+                    const stayTimeTextX = (d) => xMap(d["x"], d["device"], d["beacon"]);
+                    const stayTimeTextY = (d) => yMap(d["y"], d["device"], d["beacon"]) - CIRCLE_R;
+
+                    const stayTimeBg = (stayTime, beacon) =>
+                        stayTime > 0 && !COLLIDOR_LIST.includes(beacon) ? BG_STAY_TIME : BG_STAY_TIME_CLEAR;
+                    const stayTimeText = (stayTime, beacon) =>
+                        stayTime > 0 && !COLLIDOR_LIST.includes(beacon) ? BG_TEXT_STAY_TIME : BG_TEXT_STAY_TIME_CLEAR;
+
+                    let svgStayTime = d3.select(".stage").append("svg");
+                    svgStayTime
+                        .selectAll("rect")
+                        .data(dataTimeIdx)
+                        .enter()
+                        .append("rect")
+                        .attr("width", WIDTH_STAY_TIME)
+                        .attr("height", HEIGHT_STAY_TIME)
+                        .style("fill", rectFill)
+                        .attr("x", rectX)
+                        .attr("y", rectY);
+
+                    svgStayTime
+                        .selectAll("text")
+                        .data(dataTimeIdx)
+                        .enter()
+                        .append("text")
+                        .text((d) => d["stay_time"])
+                        .attr("class", "stay_label")
+                        .attr("fill", textFill)
+                        .attr("text-anchor", "middle")
+                        .attr("x", stayTimeTextX)
+                        .attr("y", stayTimeTextY);
+
+                    function updateCircle() {
+                        dataTimeIdx = filterNurseData();
+
+                        console.log(timeIdx, dateIdxDict[timeIdx], timeIdxDict[timeIdx], deviceNum);
+                        console.log(dataTimeIdx);
+
+                        if (deviceNum !== dataTimeIdx.length) {
+                            deviceNum = dataTimeIdx.length;
+                            svg.selectAll("circle").remove();
+                            svg.selectAll("text").remove();
+                            svgStayTime.selectAll("rect").remove();
+                            svgStayTime.selectAll("text").remove();
+
+                            svg.selectAll("circle")
+                                .data(dataTimeIdx)
+                                .enter()
+                                .append("circle")
+                                .style("fill", circleFill)
+                                .style("stroke", circleStroke)
+                                .style("stroke-width", 5)
+                                .attr("r", CIRCLE_R)
+                                .attr("cx", circleX)
+                                .attr("cy", circleY);
+
+                            svg.selectAll("text")
+                                .data(dataTimeIdx)
+                                .enter()
+                                .append("text")
+                                .text(function (d) {
+                                    return d["device"].substr(6);
+                                })
+                                .attr("class", "staff_label")
+                                .attr("fill", "white")
+                                .attr("text-anchor", "middle")
+                                .attr("x", textX)
+                                .attr("y", textY);
+
+                            svgStayTime
+                                .selectAll("rect")
+                                .data(dataTimeIdx)
+                                .enter()
+                                .append("rect")
+                                .attr("width", WIDTH_STAY_TIME)
+                                .attr("height", HEIGHT_STAY_TIME)
+                                .style("fill", rectFill)
+                                .attr("x", rectX)
+                                .attr("y", rectY);
+
+                            svgStayTime
+                                .selectAll("text")
+                                .data(dataTimeIdx)
+                                .enter()
+                                .append("text")
+                                .attr("class", "stay_label")
+                                .text(function (d) {
+                                    return d["stay_time"];
+                                })
+                                .attr("fill", textFill)
+                                .attr("text-anchor", "middle")
+                                .attr("x", stayTimeTextX)
+                                .attr("y", stayTimeTextY);
+                        } else {
+                            svg.selectAll("circle")
+                                .data(dataTimeIdx)
+                                .style("fill", circleFill)
+                                .style("stroke", circleStroke)
+                                .transition()
+                                .ease(d3.easeLinear)
+                                .attr("cx", circleX)
+                                .attr("cy", circleY);
+
+                            svg.selectAll("text")
+                                .data(dataTimeIdx)
+                                .transition()
+                                .ease(d3.easeLinear)
+                                .attr("x", textX)
+                                .attr("y", textY);
+
+                            svgStayTime
+                                .selectAll("rect")
+                                .data(dataTimeIdx)
+                                .style("fill", rectFill)
+                                .transition()
+                                .ease(d3.easeLinear)
+                                .attr("x", rectX)
+                                .attr("y", rectY);
+
+                            svgStayTime
+                                .selectAll("text")
+                                .data(dataTimeIdx)
+                                .text(function (d) {
+                                    return d["stay_time"];
+                                })
+                                .attr("fill", textFill)
+                                .transition()
+                                .ease(d3.easeLinear)
+                                .attr("x", stayTimeTextX)
+                                .attr("y", stayTimeTextY);
+                        }
+                    }
+
+                    function updateSlider() {
+                        time_slider.value = timeIdx;
+                        svgTimeBar.select("text").text(dateIdxDict[timeIdx] + " " + timeIdxDict[timeIdx]);
+                    }
+
+                    function updateAll() {
+                        updateCircle();
+                        updateSlider();
+                    }
+
+                    // functions for speed buttons
+                    function handleTimeChange(delta) {
+                        timeIdx += delta;
+                        if (timeIdx >= timeIdxLength) {
+                            timeIdx = 0;
+                        } else if (timeIdx < 0) {
+                            timeIdx = timeIdxLength - 1;
+                        }
+                        updateAll();
+                    }
+
+                    function handlePause() {
+                        timer.stop();
+                        speedState = "stop";
+                    }
+
+                    function handleNext() {
+                        handleTimeChange(1);
+                    }
+
+                    function handleNext30min() {
+                        handleTimeChange(1800);
+                    }
+
+                    function handlePrev() {
+                        handleTimeChange(-1);
+                    }
+
+                    function handlePrev30min() {
+                        handleTimeChange(-1800);
+                    }
+
+                    function handlePlay(count) {
+                        handlePause();
+                        speedState = "play";
+                        playCount += count;
+                        if (playCount > 3) {
+                            playCount = 1;
+                        }
+                        speedButtonLabels.text(function (d) {
+                            if (d.label === "play") {
+                                playLabel = "";
+                                for (let i = 0; i < playCount; i++) {
+                                    playLabel += "▶︎";
+                                }
+                                return playLabel;
+                            } else if (d.label === "rewind") {
+                                return rewindLabel;
+                            } else {
+                                return d.label;
+                            }
+                        });
+
+                        timer = d3.interval(function (elapsed) {
+                            if (elapsed < timerDuration) {
+                                handleNext();
+                            } else {
+                                stop();
+                            }
+                        }, 1000 / (FPS * playCount));
+                    }
+
+                    function handleRewind(count) {
+                        handlePause();
+                        speedState = "rewind";
+                        rewindCount += count;
+                        if (rewindCount > 3) {
+                            rewindCount = 1;
+                        }
+                        speedButtonLabels.text(function (d) {
+                            if (d.label === "rewind") {
+                                rewindLabel = "";
+                                for (let i = 0; i < rewindCount; i++) {
+                                    rewindLabel += "◀︎";
+                                }
+                                return rewindLabel;
+                            } else if (d.label === "play") {
+                                return playLabel;
+                            } else {
+                                return d.label;
+                            }
+                        });
+                        timer = d3.interval(function (elapsed) {
+                            if (elapsed < timerDuration) {
+                                handlePrev();
+                            } else {
+                                stop();
+                            }
+                        }, 1000 / (FPS * rewindCount));
+                    }
+
+                    // Buttons setup
+                    const BUTTON_X = STAGE_DIMENSIONS.width * 0.25;
+                    const BUTTON_Y = 0 * STAGE_DIMENSIONS.height;
+                    const BUTTON_WIDTH = 110;
+                    const BUTTON_HEIGHT = 40;
+                    const BUTTON_SEP = BUTTON_WIDTH + 20;
+
+                    const BUTTON_COLOR = "#ffeecc";
+                    const BUTTON_MOUSE_OVER_COLOR = "#ff8888";
+                    const SPEED_BUTTON_DATA = [
+                        {
+                            label: "30分戻る",
+                            call_back: handlePrev30min,
+                            color: BUTTON_COLOR,
+                            mouse_over_color: BUTTON_MOUSE_OVER_COLOR,
+                        },
+                        {
+                            label: "rewind",
+                            call_back: handleRewind,
+                            color: BUTTON_COLOR,
+                            mouse_over_color: BUTTON_MOUSE_OVER_COLOR,
+                        },
+                        {
+                            label: "◼︎",
+                            call_back: handlePause,
+                            color: BUTTON_COLOR,
+                            mouse_over_color: BUTTON_MOUSE_OVER_COLOR,
+                        },
+                        {
+                            label: "play",
+                            call_back: handlePlay,
+                            color: BUTTON_COLOR,
+                            mouse_over_color: BUTTON_MOUSE_OVER_COLOR,
+                        },
+                        {
+                            label: "30分進む",
+                            call_back: handleNext30min,
+                            color: BUTTON_COLOR,
+                            mouse_over_color: BUTTON_MOUSE_OVER_COLOR,
+                        },
+                    ];
+
+                    let speedButtons = speedPanel
+                        .selectAll(".button")
+                        .data(SPEED_BUTTON_DATA)
+                        .enter()
+                        .append("rect")
+                        .attr("transform", function (d, i) {
+                            return "translate(" + (BUTTON_X + BUTTON_SEP * i) + ", " + BUTTON_Y + ")";
+                        })
+                        .attr("class", "button")
+                        .attr("fill", function (d) {
+                            return d.color;
+                        })
+                        .attr("x", 0)
+                        .attr("y", 0)
+                        .attr("width", BUTTON_WIDTH)
+                        .attr("height", BUTTON_HEIGHT)
+                        .on("mouseover", function (d) {
+                            d3.select(this).attr("fill", d.mouse_over_color);
+                        })
+                        .on("mouseout", function (d) {
+                            d3.select(this).attr("fill", d.color);
+                        })
+                        .on("click", function (d) {
+                            if (d.label === "play" || d.label === "rewind") {
+                                d.call_back(1);
+                            } else {
+                                d.call_back();
+                            }
+                        });
+
+                    let speedButtonLabels = speedPanel
+                        .selectAll(".button_label")
+                        .data(SPEED_BUTTON_DATA)
+                        .enter()
+                        .append("text")
+                        .text(function (d) {
+                            if (d.label === "play") {
+                                return playLabel;
+                            } else if (d.label === "rewind") {
+                                return rewindLabel;
+                            } else {
+                                return d.label;
+                            }
+                        })
+                        .attr("transform", function (d, i) {
+                            return "translate(" + (BUTTON_X + BUTTON_SEP * i) + ", " + BUTTON_Y + ")";
+                        })
+                        .attr("class", "button_label")
+                        .attr("fill", "black")
+                        .attr("x", 0.5 * BUTTON_WIDTH)
+                        .attr("y", 0.67 * BUTTON_HEIGHT)
+                        .attr("text-anchor", "middle");
+
+                    const WORK_TIME_BUTTON_X = 0;
+                    const WORK_TIME_BUTTON_Y = 550;
+                    const BUTTON_V_SEP = BUTTON_HEIGHT + 10;
+
+                    function updateWorkTimeState(work_time) {
+                        stateDictionary.work.flag[work_time] = !stateDictionary.work.flag[work_time];
+                        workTimeButtons.attr("fill", function (d) {
+                            if (stateDictionary.work.flag[d.label]) {
+                                return stateDictionary.work.active[d.label];
+                            } else {
+                                return stateDictionary.work.inactive[d.label];
+                            }
+                        });
+                        workTimeState = Object.keys(stateDictionary.work.flag).map((work_time) => {
+                            if (stateDictionary.work.flag[work_time]) return work_time;
+                        });
+                        updateAll();
+                    }
+
+                    const WORK_TIME_BUTTON_DATA = [
+                        {
+                            label: "日勤",
+                            call_back: updateWorkTimeState,
+                        },
+                        {
+                            label: "12時間",
+                            call_back: updateWorkTimeState,
+                        },
+                        {
+                            label: "夜勤",
+                            call_back: updateWorkTimeState,
+                        },
+                    ];
+
+                    let workTimeButtons = workTimePanel
+                        .selectAll(".button")
+                        .data(WORK_TIME_BUTTON_DATA)
+                        .enter()
+                        .append("rect")
+                        .attr("transform", function (d, i) {
+                            return (
+                                "translate(" + WORK_TIME_BUTTON_X + ", " + (WORK_TIME_BUTTON_Y + BUTTON_V_SEP * i) + ")"
+                            );
+                        })
+                        .attr("class", "button")
+                        .attr("fill", function (d) {
+                            if (stateDictionary.work.flag[d.label]) {
+                                return stateDictionary.work.active[d.label];
+                            } else {
+                                return stateDictionary.work.inactive[d.label];
+                            }
+                        })
+                        .attr("x", 1000)
+                        .attr("y", 0)
+                        .attr("width", BUTTON_WIDTH)
+                        .attr("height", BUTTON_HEIGHT)
+                        .on("click", function (d) {
+                            d.call_back(d.label);
+                        });
+
+                    var workTimeButtonLabels = workTimePanel
+                        .selectAll(".button_label")
+                        .data(WORK_TIME_BUTTON_DATA)
+                        .enter()
+                        .append("text")
+                        .text(function (d) {
+                            return d.label;
+                        })
+                        .attr("transform", function (d, i) {
+                            return (
+                                "translate(" + WORK_TIME_BUTTON_X + ", " + (WORK_TIME_BUTTON_Y + BUTTON_V_SEP * i) + ")"
+                            );
+                        })
+                        .attr("class", "button_label")
+                        .attr("fill", "white")
+                        .attr("x", 1000 + 0.5 * BUTTON_WIDTH)
+                        .attr("y", 0.67 * BUTTON_HEIGHT)
+                        .attr("text-anchor", "middle");
+
+                    const LEVEL_BUTTON_X = 0;
+                    const LEVEL_BUTTON_Y = 50;
+
+                    function updateLevelState(level) {
+                        stateDictionary.level.flag[level] = !stateDictionary.level.flag[level];
+                        levelButtons.attr("fill", function (d) {
+                            if (stateDictionary.level.flag[d.label]) {
+                                return stateDictionary.level.active[d.label];
+                            } else {
+                                return stateDictionary.level.inactive[d.label];
+                            }
+                        });
+                        levelState = Object.keys(stateDictionary.level.flag).map((level) => {
+                            if (stateDictionary.level.flag[level]) return level;
+                        });
+                        updateAll();
+                    }
+
+                    const LEVEL_BUTTON_DATA = [
+                        {
+                            label: "未取得",
+                            call_back: updateLevelState,
+                        },
+                        {
+                            label: "レベルⅠ",
+                            call_back: updateLevelState,
+                        },
+                        {
+                            label: "レベルⅡ",
+                            call_back: updateLevelState,
+                        },
+                        {
+                            label: "レベルⅢ",
+                            call_back: updateLevelState,
+                        },
+                        {
+                            label: "レベルⅣ",
+                            call_back: updateLevelState,
+                        },
+                    ];
+
+                    let levelButtons = levelPanel
+                        .selectAll(".button")
+                        .data(LEVEL_BUTTON_DATA)
+                        .enter()
+                        .append("rect")
+                        .attr("transform", function (d, i) {
+                            return "translate(" + LEVEL_BUTTON_X + ", " + (LEVEL_BUTTON_Y + BUTTON_V_SEP * i) + ")";
+                        })
+                        .attr("class", "button")
+                        .attr("fill", function (d) {
+                            if (stateDictionary.level.flag[d.label]) {
+                                return stateDictionary.level.active[d.label];
+                            } else {
+                                return stateDictionary.level.inactive[d.label];
+                            }
+                        })
+                        .attr("x", 1000)
+                        .attr("y", 200)
+                        .attr("width", BUTTON_WIDTH)
+                        .attr("height", BUTTON_HEIGHT)
+                        .on("click", (d) => {
+                            d.call_back(d.label);
+                        });
+
+                    let levelButtonLabels = levelPanel
+                        .selectAll(".button_label")
+                        .data(LEVEL_BUTTON_DATA)
+                        .enter()
+                        .append("text")
+                        .text((d) => {
+                            return d.label;
+                        })
+                        .attr("transform", function (d, i) {
+                            return "translate(" + LEVEL_BUTTON_X + ", " + (LEVEL_BUTTON_Y + BUTTON_V_SEP * i) + ")";
+                        })
+                        .attr("class", "button_label")
+                        .attr("fill", "white")
+                        .attr("x", 1000 + 0.5 * BUTTON_WIDTH)
+                        .attr("y", 200 + 0.67 * BUTTON_HEIGHT)
+                        .attr("text-anchor", "middle");
+                }
+            }, 20);
+        }
+    </script>
+</body>
